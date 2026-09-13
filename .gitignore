@@ -1,0 +1,22 @@
+# R
+.Rhistory
+.RData
+.Rproj.user/
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Large data files (download from GEO instead — see README)
+data/raw/
+data/processed/*.rds
+data/processed/*.Rds
+
+# Rendered figures ARE bundled with this repository (see README) — keep them tracked.
+# results/figures/
+
+# OS
+.DS_Store
+Thumbs.db
