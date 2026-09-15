@@ -69,7 +69,7 @@ The scripts handle all preprocessing automatically (per-sample standard-10x dire
 - [harmony](https://github.com/immunogenomics/harmony)
 - [UCell](https://github.com/carmonalab/UCell) (Bioconductor)
 - [slingshot](https://github.com/kstreet13/slingshot) (Bioconductor)
-- `mgcv` (GAM smoother, base R) and `segmented` (breakpoint regression) — used by `08_pseudotime_shape.R`
+- `mgcv` (GAM smoother, base R) and `segmented` (breakpoint regression) — used by `08_pseudotime_shape.R` and `09_robustness_lodo.R`
 - `dplyr`, `tidyr`, `ggplot2`, `patchwork`
 - Python ≥ 3.9 with `Pillow` (figure assembly only)
 
@@ -85,6 +85,7 @@ Scripts are numbered by **execution order**; comments in each script header map 
 | `04_trajectory.R` | slingshot pseudotime; DriftIndex–pseudotime Spearman correlation; decile trend; lineage-gene dynamics | `seurat_gse169396_drift.rds` | `seurat_gse169396_traj.rds`; `04_trajectory_summary.csv`; trajectory figures |
 | `05_cross_species.R` | Healthy mouse metaphysis processing + same scoring; cross-species DriftIndex & hybrid-proportion comparison | GSE317069 mouse 10x (5 samples) + `seurat_gse169396_drift.rds` | `seurat_mouse_metaphysis_bone.rds`; `05_cross_species_summary.csv`; cross-species figures |
 | `08_pseudotime_shape.R` | **Shape of DriftIndex along pseudotime**: GAM smoother (`mgcv`) + single- and double-breakpoint segmented regression (`segmented`) + Davies test — establishes the biphasic (rise-then-decline) trajectory | `seurat_gse169396_traj.rds` | `08_pseudotime_shape_summary.csv`, `08_pseudotime_deciles.csv`, `08_shape_smoother.png`, `08_shape_deciles.png` |
+| `09_robustness_lodo.R` | **Donor-aware robustness** of the DriftIndex–pseudotime association: leave-one-donor-out re-fitting, donor-cluster bootstrap, donor-block permutation test, and a within-donor-centred correlation — replaces the cell-level (pseudoreplicated) p-values with donor-level inference | `seurat_gse169396_traj.rds` | `09_robustness_summary.csv`, `09_lodo_summary.csv`, `09_lodo_rho_forest.png` |
 
 ```bash
 Rscript scripts/01_qc_cluster.R
@@ -93,6 +94,7 @@ Rscript scripts/03_sensitivity.R
 Rscript scripts/04_trajectory.R
 Rscript scripts/05_cross_species.R
 Rscript scripts/08_pseudotime_shape.R
+Rscript scripts/09_robustness_lodo.R
 ```
 
 ### Figure generation
@@ -166,6 +168,9 @@ Only **S1 vs S2** supports a densitometric contrast; S3 and S4 are reported desc
 - `08_pseudotime_shape_summary.csv` — GAM fit, breakpoint estimates, pre/post-breakpoint slopes, Davies test
 - `08_pseudotime_deciles.csv` — DriftIndex mean ± SD and cell counts per pseudotime decile
 - `08_pseudotime_shape_report.txt` — full console report of the shape analysis
+- `09_robustness_summary.csv` — donor-aware robustness metrics (leave-one-donor-out ρ range, donor-cluster bootstrap CI, donor-block permutation p, within-donor-centred ρ)
+- `09_lodo_summary.csv` — per-fold leave-one-donor-out statistics (ρ, GAM edf, breakpoint, pre/post slopes, Davies p)
+- `09_robustness_report.txt` — full console report of the donor-aware robustness analysis
 
 ## Figures (pre-rendered, in `results/figures/`)
 
@@ -185,14 +190,15 @@ Only **S1 vs S2** supports a densitometric contrast; S3 and S4 are reported desc
 | `FigS6.png` | Shape of the DriftIndex along pseudotime — GAM smoother and segmented-regression fit |
 | `Fig1_nolabel_preview.png` | Label-free preview of Fig 1 (layout check only) |
 
-**Individual panels** — `results/figures/PNG_hires/` holds the 23 single-panel renders (300 dpi) that the assembly scripts stitch into the multi-panel figures above. Fig 1 is assembled from its own three panels in `results/figures/fig1_panels/` (`A1` DriftIndex, `A3` Sample, `B` Cell state).
+**Individual panels** — `results/figures/PNG_hires/` holds the 24 single-panel renders (300 dpi); the assembly scripts stitch most of them into the multi-panel figures above. Five panels (`01_UMAP_bone_lineage`, `02_UMAP_DriftIndex`, `02_UMAP_cell_state`, `02_hybrid_signature_heatmap`, `09_lodo_rho_forest`) are exploratory or analysis-only and are not stitched. Fig 1 is assembled from its own three panels in `results/figures/fig1_panels/` (`A1` DriftIndex, `A3` Sample, `B` Cell state).
 
 ## Methodological notes
 
 - **DriftIndex** (cell level) = `UCell(AD_drift)` − `UCell(OS_identity)`; hybrid = both UCell scores > 0 (rank-based baseline).
 - **Biphasic trajectory**: `08_pseudotime_shape.R` shows that the DriftIndex–pseudotime relationship is non-linear (GAM edf = 8.2; linear-vs-GAM likelihood-ratio p = 5.8 × 10⁻⁴⁵). A single-breakpoint segmented regression places the breakpoint at normalized pseudotime 0.448 (95% CI 0.390–0.506); the pre-breakpoint slope is positive (+0.187, p = 7.9 × 10⁻⁶) and the post-breakpoint slope is negative (−0.268, p = 2.3 × 10⁻⁴²) (Davies test p = 3.2 × 10⁻³¹). AIC further favours a two-breakpoint model, consistent with rise-then-decline.
 - UCell scores are rank-normalized; **cross-species** comparisons therefore rely on hybrid proportions and relative trends, not absolute scores.
-- Cells within a donor are non-independent; per-sample summaries (mean ± SD) are reported alongside cell-level statistics, and cross-donor comparisons are descriptive rather than confirmatory.
+- **Donor-aware inference**: the 3,850 bone-lineage cells derive from only four donors, so cell-level p-values are pseudoreplicated. `09_robustness_lodo.R` therefore re-evaluates the DriftIndex–pseudotime association with the donor as the resampling unit — leave-one-donor-out (ρ range −0.33 to −0.28, all folds negative), donor-cluster bootstrap (95% CI −0.34 to −0.26), a donor-block permutation test that shuffles pseudotime within donors (p = 5 × 10⁻⁴, the resolution floor of 2,000 permutations), and a within-donor-centred correlation that removes between-donor confounding (ρ = −0.31, p = 5 × 10⁻⁴). The trajectory shape is equally stable across all four leave-one-donor-out folds (breakpoint 0.43–0.47).
+- Cells within a donor are non-independent; per-sample summaries (mean ± SD) are reported alongside cell-level statistics. For the two-donor densitometric comparison the unit of inference (the donor) gives n = 1 per group, so that comparison is reported descriptively and without a p-value.
 
 ## License & citation
 
