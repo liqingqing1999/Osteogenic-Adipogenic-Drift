@@ -1,0 +1,41 @@
+===== 08 DriftIndex–pseudotime 形状分析 =====
+日期：2026-09-11 16:27:19
+细胞数 n = 3850；pseudotime 原范围 [0.00, 212.38] → 归一化 [0,1]
+
+[Spearman] 细胞级 rho = -0.3214, p = 3.309e-93
+
+[十分位均值]
+  bin  1  pt=0.050  DriftIndex=+0.0160  (n=129)
+  bin  2  pt=0.145  DriftIndex=+0.0131  (n=82)
+  bin  3  pt=0.256  DriftIndex=+0.0602  (n=81)
+  bin  4  pt=0.354  DriftIndex=+0.0744  (n=56)
+  bin  5  pt=0.473  DriftIndex=+0.0808  (n=130)
+  bin  6  pt=0.541  DriftIndex=+0.0760  (n=224)
+  bin  7  pt=0.664  DriftIndex=+0.0356  (n=713)
+  bin  8  pt=0.741  DriftIndex=-0.0026  (n=1893)
+  bin  9  pt=0.840  DriftIndex=-0.0046  (n=463)
+  bin 10  pt=0.928  DriftIndex=+0.0110  (n=79)
+  早期(bins 1-3) 均值 = +0.0298；晚期(bins 8-10) 均值 = +0.0012；净变化 = -0.0285
+
+[GAM 平滑 s(pts)]
+  edf = 8.21 (Ref.df = 9.58)  F = 33.09  p = 0.000e+00  |  调整 R² = 0.0764  偏差解释 = 7.84%
+  线性 vs GAM 似然比检验: F = 25.68, p = 5.832e-45  → 非线性显著（形状非直线）
+  GAM 拟合峰位: pts ≈ 0.553（DriftIndex ≈ +0.0849）
+
+[分段回归（单断点）]
+  断点 pts ≈ 0.448
+  断点 95%CI ≈ [0.390, 0.506]
+  断点前斜率（pts<bp）与断点后斜率（pts>bp）：
+    pre : 斜率 +0.1872 (95%CI 0.1051..0.2692), t=4.47, p=7.899e-06
+    post: 斜率 -0.2684 (95%CI -0.3065..-0.2303), t=-13.81, p=2.272e-42
+  Davies 检验（H0：斜率恒定）: p = 3.176e-31 → 拒绝斜率恒定（存在断点）
+
+[分段回归（双断点，探测倒 U 的两个拐点）]
+  断点1 pts ≈ 0.640；断点2 pts ≈ 0.677
+    pts: 斜率 +0.1190 (p=8.578e-02)
+  AIC：直线 -6377.2 < 单断点 -6515.9 < 双断点 -6604.3
+
+[输出] 08_pseudotime_shape_summary.csv / 08_pseudotime_deciles.csv
+[输出] PNG_hires/08_shape_smoother.png + 08_shape_deciles.png
+
+===== 08 完成 =====
