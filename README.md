@@ -1,3 +1,5 @@
+> **Status: superseded — repository archived.** This repository documents the *previous* version of the analysis (hybrid-state classification and cell-level DriftIndex on GSE169396), as cited in earlier submissions of this work. A preregistered re-analysis with donor-level inference, ambient-RNA correction, gated per-donor trajectories, and the Δc program-dynamics statistic is available at **https://github.com/liqingqing1999/osteolineage-temporal-offset** (Zenodo concept DOI: 10.5281/zenodo.23837184; version of record analysed, v1.0.0: 10.5281/zenodo.23837185). This repository is kept for reproducibility of the earlier version only and will not be updated further.
+
 # Adipogenic Drift of the Osteoblast Lineage Peaks at the Osteopenic Stage: A Single-Cell Study of Human Bone-Mass Decline
 
 **Single-cell evidence that adipogenic drift of the osteoblast lineage forms a continuum of hybrid intermediate states and is most active at the osteopenic stage — benchmarked against a healthy adult-mouse reference.**
@@ -56,7 +58,9 @@ This repository ships the **code, the pre-computed result tables, and the render
 └── results/
     ├── figures/
     │   ├── composite/                           # final multi-panel figures (Fig 1–4, Fig S1–S6)
-    │   └── PNG_hires/                           # individual rendered panels (300 dpi)
+    │   ├── PNG_hires/                           # individual rendered panels (300 dpi)
+    │   └── invariance/                          # threshold-invariance & contamination plots (PDF)
+    ├── invariance/                              # 07b/07c outputs (tables, plots, console reports)
     └── tables/                                  # pre-computed result tables (CSV)
 ```
 
@@ -75,7 +79,7 @@ The scripts handle all preprocessing automatically (per-sample standard-10x dire
 
 ## Pipeline (run in order)
 
-Scripts are numbered by **execution order**; comments in each script header map it back to the corresponding step of the parent study protocol (protocol steps 1, 2, 2b/sensitivity, 3, 6). Numbering follows the parent protocol, so **steps `06`–`07` are reserved** (DriftIndex formula freeze; permutation-based threshold) and are not yet part of this release — which is why the shape analysis is numbered `08`.
+Scripts are numbered by **execution order**; comments in each script header map it back to the corresponding step of the parent study protocol (protocol steps 1, 2, 2b/sensitivity, 3, 6). Numbering follows the parent protocol. The sub-numbered robustness scripts **`07b`** (threshold-invariance interval) and **`07c`** (contamination support domain) are included in this release; the bare steps **`06`** (DriftIndex formula freeze) and **`07`** (permutation-based threshold) remain reserved, which is why the shape analysis is numbered `08`.
 
 | Script | Analysis step | Input | Key output |
 |---|---|---|---|
@@ -84,6 +88,8 @@ Scripts are numbered by **execution order**; comments in each script header map 
 | `03_sensitivity.R` | Threshold-sweep sensitivity of the hybrid-state classification (informative thresholds ≥ 0) | `seurat_gse169396_drift.rds` | `03_sensitivity_summary.csv`, `03_sensitivity_trend.pdf` |
 | `04_trajectory.R` | slingshot pseudotime; DriftIndex–pseudotime Spearman correlation; decile trend; lineage-gene dynamics | `seurat_gse169396_drift.rds` | `seurat_gse169396_traj.rds`; `04_trajectory_summary.csv`; trajectory figures |
 | `05_cross_species.R` | Healthy mouse metaphysis processing + same scoring; cross-species DriftIndex & hybrid-proportion comparison | GSE317069 mouse 10x (5 samples) + `seurat_gse169396_drift.rds` | `seurat_mouse_metaphysis_bone.rds`; `05_cross_species_summary.csv`; cross-species figures |
+| `07b_invariance.R` | **Threshold-invariance interval** of the S2 > S1 ordering: replaces the single-threshold statement by the full interval of thresholds over which it holds (sign criterion, cell-level bootstrap, rule-invariance cross-check) | `seurat_gse169396_drift.rds`; `results/tables/03_sensitivity_summary.csv` | `results/invariance/07b_invariance.csv`, `07b_exact_support_profile.csv`, `07b_invariance.pdf`, `07b_invariance_summary.txt` |
+| `07c_domain.R` | **Contamination support domain**: (threshold × doublet × ambient) grid, with mixtures synthesised in the SCTransform-corrected count space and re-scored by the same UCell pipeline | `seurat_gse169396_drift.rds`; `seurat_gse169396_all.rds`; `results/invariance/07b_invariance.csv` | `results/invariance/07c_domain.csv`, `07c_delivery_r.csv`, `07c_domain.pdf`, `07c_domain_summary.txt` |
 | `08_pseudotime_shape.R` | **Shape of DriftIndex along pseudotime**: GAM smoother (`mgcv`) + single- and double-breakpoint segmented regression (`segmented`) + Davies test — establishes the biphasic (rise-then-decline) trajectory | `seurat_gse169396_traj.rds` | `08_pseudotime_shape_summary.csv`, `08_pseudotime_deciles.csv`, `08_shape_smoother.png`, `08_shape_deciles.png` |
 | `09_robustness_lodo.R` | **Donor-aware robustness** of the DriftIndex–pseudotime association: leave-one-donor-out re-fitting, donor-cluster bootstrap, donor-block permutation test, and a within-donor-centred correlation — replaces the cell-level (pseudoreplicated) p-values with donor-level inference | `seurat_gse169396_traj.rds` | `09_robustness_summary.csv`, `09_lodo_summary.csv`, `09_lodo_rho_forest.png` |
 
@@ -93,6 +99,8 @@ Rscript scripts/02_drift_analysis.R
 Rscript scripts/03_sensitivity.R
 Rscript scripts/04_trajectory.R
 Rscript scripts/05_cross_species.R
+Rscript scripts/07b_invariance.R
+Rscript scripts/07c_domain.R
 Rscript scripts/08_pseudotime_shape.R
 Rscript scripts/09_robustness_lodo.R
 ```
@@ -172,6 +180,15 @@ Only **S1 vs S2** supports a densitometric contrast; S3 and S4 are reported desc
 - `09_lodo_summary.csv` — per-fold leave-one-donor-out statistics (ρ, GAM edf, breakpoint, pre/post slopes, Davies p)
 - `09_robustness_report.txt` — full console report of the donor-aware robustness analysis
 
+Step-07b / 07c outputs live in **`results/invariance/`** (they are not part of the main figure set):
+
+- `07b_invariance.csv` — per-threshold `D(t) = pct_S2(t) − pct_S1(t)`, signatures and bootstrap summaries over the threshold grid
+- `07b_exact_support_profile.csv` — exact (jump-point) support profile of the ordering interval
+- `07b_invariance_summary.txt` — console report of the threshold-invariance analysis
+- `07c_domain.csv` — per-resample results over the full threshold × doublet × ambient grid
+- `07c_delivery_r.csv` — delivered robustness profile, **doublet axis only** (see note below)
+- `07c_domain_summary.txt` — console report of the contamination-domain analysis
+
 ## Figures (pre-rendered, in `results/figures/`)
 
 **Final multi-panel figures** — `results/figures/composite/` (300 dpi):
@@ -197,6 +214,7 @@ Only **S1 vs S2** supports a densitometric contrast; S3 and S4 are reported desc
 - **DriftIndex** (cell level) = `UCell(AD_drift)` − `UCell(OS_identity)`; hybrid = both UCell scores > 0 (rank-based baseline).
 - **Biphasic trajectory**: `08_pseudotime_shape.R` shows that the DriftIndex–pseudotime relationship is non-linear (GAM edf = 8.2; linear-vs-GAM likelihood-ratio p = 5.8 × 10⁻⁴⁵). A single-breakpoint segmented regression places the breakpoint at normalized pseudotime 0.448 (95% CI 0.390–0.506); the pre-breakpoint slope is positive (+0.187, p = 7.9 × 10⁻⁶) and the post-breakpoint slope is negative (−0.268, p = 2.3 × 10⁻⁴²) (Davies test p = 3.2 × 10⁻³¹). AIC further favours a two-breakpoint model, consistent with rise-then-decline.
 - UCell scores are rank-normalized; **cross-species** comparisons therefore rely on hybrid proportions and relative trends, not absolute scores.
+- **Threshold invariance**: `07b_invariance.R` replaces the single-threshold statement with the interval of thresholds over which the S2 > S1 ordering holds, and cross-checks it under an alternative (quantile-based) classification rule. `07c_domain.R` then synthesises doublets and ambient RNA **in the SCTransform-corrected count space** — the same space in which the archived UCell scores were computed, so that the `(r = 0, c = 0)` cell reproduces `07b` bit-for-bit (identity guard, max |Δ| = 5 × 10⁻¹⁴). Mixtures are never re-summed from raw droplet counts, and the ambient fraction is reported for record only: on this sparse representation it saturates at the first non-zero value and therefore has no dose–response meaning, so the delivered robustness profile uses the doublet axis alone.
 - **Donor-aware inference**: the 3,850 bone-lineage cells derive from only four donors, so cell-level p-values are pseudoreplicated. `09_robustness_lodo.R` therefore re-evaluates the DriftIndex–pseudotime association with the donor as the resampling unit — leave-one-donor-out (ρ range −0.33 to −0.28, all folds negative), donor-cluster bootstrap (95% CI −0.34 to −0.26), a donor-block permutation test that shuffles pseudotime within donors (p = 5 × 10⁻⁴, the resolution floor of 2,000 permutations), and a within-donor-centred correlation that removes between-donor confounding (ρ = −0.31, p = 5 × 10⁻⁴). The trajectory shape is equally stable across all four leave-one-donor-out folds (breakpoint 0.43–0.47).
 - Cells within a donor are non-independent; per-sample summaries (mean ± SD) are reported alongside cell-level statistics. For the two-donor densitometric comparison the unit of inference (the donor) gives n = 1 per group, so that comparison is reported descriptively and without a p-value.
 
